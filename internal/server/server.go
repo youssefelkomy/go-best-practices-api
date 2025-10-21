@@ -1,6 +1,7 @@
 package server
 
 import (
+	_ "embed"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -9,6 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+//go:embed openapi.yaml
+var openapiYAML []byte
 
 // Server uses a gin.Engine internally but exposes ServeHTTP so tests can use
 // httptest with the server instance.
@@ -118,4 +122,26 @@ func (s *Server) routes() {
 	// keep compatibility routes
 	s.engine.GET("/health", gin.WrapF(handler.HealthCheckHandler))
 	s.engine.GET("/hello", gin.WrapF(handler.HelloHandler))
+
+	// serve OpenAPI spec file and docs
+	s.engine.GET("/openapi.yaml", func(c *gin.Context) {
+		c.Data(http.StatusOK, "application/x-yaml", openapiYAML)
+	})
+
+	// Redoc UI for interactive documentation
+	s.engine.GET("/docs", func(c *gin.Context) {
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.String(http.StatusOK, `<!doctype html>
+<html>
+	<head>
+		<title>API Docs</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+	</head>
+	<body>
+		<redoc spec-url="/openapi.yaml"></redoc>
+	</body>
+</html>`)
+	})
 }

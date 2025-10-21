@@ -197,4 +197,3 @@ components:
               type: string
         body:
           type: string
-
