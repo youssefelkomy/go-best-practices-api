@@ -3,6 +3,7 @@ package server
 import (
 	_ "embed"
 	"net/http"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -131,17 +132,38 @@ func (s *Server) routes() {
 	// Redoc UI for interactive documentation
 	s.engine.GET("/docs", func(c *gin.Context) {
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		c.String(http.StatusOK, `<!doctype html>
+				// quote the YAML so it can be embedded safely into a JS string literal
+				specLiteral := strconv.Quote(string(openapiYAML))
+
+				html := `<!doctype html>
 <html>
 	<head>
 		<title>API Docs</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 		<script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+		<style>body{margin:0;padding:0}</style>
 	</head>
 	<body>
-		<redoc spec-url="/openapi.yaml"></redoc>
+		<div id="redoc"></div>
+		<script>
+			(function(){
+				try{
+					const specYAML = ` + specLiteral + `;
+					const spec = jsyaml.load(specYAML);
+					Redoc.init(spec, {}, document.getElementById('redoc'))
+				}catch(e){
+					document.getElementById('redoc').innerText = 'Failed to render docs: '+e
+				}
+			})();
+		</script>
+		<noscript>
+			<p>JavaScript required. You can view the raw spec <a href="/openapi.yaml">here</a>.</p>
+		</noscript>
 	</body>
-</html>`)
+</html>`
+
+				c.String(http.StatusOK, html)
 	})
 }
