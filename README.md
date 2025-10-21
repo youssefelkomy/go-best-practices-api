@@ -1,4 +1,4 @@
-# My Go Server
+# Go Best Practices API
 
 This project is a simple HTTP server built with Go, designed to demonstrate best practices in server implementation and testing.
 
@@ -82,7 +82,7 @@ Prerequisites:
 Bootstrap (one-time):
 
 ```bash
-cd /home/youssef/projects/my-go-server
+cd your-route/projects/go-best-practices-api
 go mod tidy
 ```
 
@@ -100,7 +100,7 @@ Open http://localhost:8080/docs in your browser to view interactive API docs.
 For benchmarking or running without Gin debug logs, use release mode:
 
 ```bash
-cd /home/youssef/projects/my-go-server
+cd your-route/projects/go-best-practices-api
 export GIN_MODE=release
 go build -o my-go-server ./cmd/server
 ./my-go-server &> server.log &
@@ -143,10 +143,10 @@ Example `wrk` run (local loopback):
 
 ```bash
 # moderate concurrency
-wrk -t4 -c200 -d30s http://127.0.0.1:8080/info
+wrk2 -t4 -c200 -d30s http://127.0.0.1:8080/info
 
 # increase until throughput plateaus
-wrk -t4 -c400 -d30s http://127.0.0.1:8080/info
+wrk2 -t4 -c400 -d30s http://127.0.0.1:8080/info
 ```
 
 Example `hey`:
