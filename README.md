@@ -34,56 +34,167 @@ my-go-server
 
 ## Getting Started
 
-### Prerequisites
+# my-go-server
 
-- Go 1.16 or later
-- Make (optional, for using the Makefile)
+Lightweight example Go HTTP server (built with Gin) intended for local development,
+experimentation and benchmarking. It includes a small set of endpoints, an embedded
+OpenAPI spec and an interactive documentation UI (Redoc).
 
-### Installation
+This README documents how to run, test, benchmark and profile the server.
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/my-go-server.git
-   cd my-go-server
-   ```
+---
 
-2. Install dependencies:
-   ```
-   go mod tidy
-   ```
+Table of contents
+- Overview and routes
+- Quick start
+- Build & run (release)
+- Tests
+- Docs (OpenAPI + Redoc)
+- Benchmarking and profiling
+- Notes & recommendations
 
-### Running the Server
+## Overview and routes
 
-To run the server, execute the following command:
+Main implementation: `internal/server/server.go` (Gin engine).
 
+Exposed endpoints (short):
+
+- `GET /` — Service metadata (service, version, uptime, requests)
+- `GET /info` — Start time and basic info
+- `GET /time` — Current server time (RFC3339Nano)
+- `GET /health` — Simple liveness (keeps compatibility with `pkg/handler`)
+- `GET /metrics` — In-memory metrics (uptime, total requests)
+- `GET /headers` — Echo request headers (diagnostic)
+- `ANY /echo` — Echo method, query, headers and raw body
+- `GET /hello` — Greeting JSON (keeps compatibility with `pkg/handler`)
+- `GET /openapi.yaml` — Embedded OpenAPI specification (YAML)
+- `GET /docs` — Interactive Redoc documentation (embedded spec)
+
+Notes:
+- `pkg/handler` contains small net/http-compatible handlers used for `/health` and `/hello`.
+- The OpenAPI spec is embedded into the binary for reliable docs serving.
+
+## Quick start (development)
+
+Prerequisites:
+- Go 1.20+ (this repo was tested with Go 1.25)
+
+Bootstrap (one-time):
+
+```bash
+cd /home/youssef/projects/my-go-server
+go mod tidy
 ```
-go run cmd/server/main.go
+
+Run (quick):
+
+```bash
+# development (prints Gin debug logs)
+go run ./cmd/server
 ```
 
-The server will start listening on the specified port (default is 8080).
+Open http://localhost:8080/docs in your browser to view interactive API docs.
 
-### Running Tests
+## Build & run (release mode)
 
-To run unit tests, use:
+For benchmarking or running without Gin debug logs, use release mode:
 
+```bash
+cd /home/youssef/projects/my-go-server
+export GIN_MODE=release
+go build -o my-go-server ./cmd/server
+./my-go-server &> server.log &
+echo $!  # PID
 ```
+
+Then visit:
+
+- http://localhost:8080/ — service info
+- http://localhost:8080/docs — interactive docs (Redoc)
+- http://localhost:8080/openapi.yaml — raw OpenAPI spec
+
+## Tests
+
+Run all unit & integration tests:
+
+```bash
 go test ./...
 ```
 
-For integration tests, run:
+Run only integration tests:
 
-```
+```bash
 go test ./test/integration
 ```
 
-### API Documentation
+## Docs (OpenAPI & Redoc)
 
-The API endpoints are documented in the `api/openapi.yaml` file. You can use tools like Swagger UI to visualize and interact with the API.
+- The OpenAPI spec file is maintained at `api/openapi.yaml` and a copy is embedded at
+   `internal/server/openapi.yaml` so the binary serves the spec even when the working directory changes.
+- Interactive docs are available at `/docs` (Redoc) and are served using an embedded copy of the spec
+   so they work offline and without an extra network fetch.
 
-### Contributing
+## Benchmarking and profiling (recommended)
 
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+Start the server in release mode (see above). Use a modern benchmarking tool — `wrk`, `hey` or `vegeta`
+— instead of `ab` when testing high concurrency.
 
-### License
+Example `wrk` run (local loopback):
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+```bash
+# moderate concurrency
+wrk -t4 -c200 -d30s http://127.0.0.1:8080/info
+
+# increase until throughput plateaus
+wrk -t4 -c400 -d30s http://127.0.0.1:8080/info
+```
+
+Example `hey`:
+
+```bash
+hey -n 200000 -c 200 http://127.0.0.1:8080/info
+```
+
+If you push concurrency very high (thousands), raise OS limits first:
+
+```bash
+# temporary for current shell
+ulimit -n 100000
+sudo sysctl -w net.core.somaxconn=65535
+sudo sysctl -w net.ipv4.tcp_max_syn_backlog=4096
+sudo sysctl -w net.ipv4.ip_local_port_range="1024 65000"
+```
+
+Profiling with pprof (developer only)
+
+1. Temporarily enable `net/http/pprof` in `cmd/server/main.go` (dev only):
+
+```go
+import _ "net/http/pprof"
+go func() { log.Println(http.ListenAndServe("localhost:6060", nil)) }()
+```
+
+2. Start server + benchmark, then collect a CPU profile:
+
+```bash
+go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
+# in pprof: (pprof) top  ; (pprof) web
+```
+
+3. Inspect heap profile similarly using `/debug/pprof/heap`.
+
+## Practical tips & tuning
+
+- Run Gin in release mode when benchmarking: `export GIN_MODE=release`.
+- Use keep-alive in clients (wrk/hey/vegeta support this) to avoid connection churn.
+- Route or disable the Gin logger when benchmarking; logging to stdout can hurt throughput.
+- Pre-encode static JSON payloads if possible to avoid allocations in hot handlers (e.g. a prebuilt `[]byte` for `{"message":"Hello, World!"}`).
+- Profile before optimizing: use pprof to find real hotspots (GC, allocation, syscalls).
+
+## Contributing
+
+Contributions are welcome — open an issue or a PR. If you add new endpoints, please update `api/openapi.yaml`.
+
+## License
+
+MIT
