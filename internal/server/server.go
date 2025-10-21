@@ -132,10 +132,10 @@ func (s *Server) routes() {
 	// Redoc UI for interactive documentation
 	s.engine.GET("/docs", func(c *gin.Context) {
 		c.Header("Content-Type", "text/html; charset=utf-8")
-				// quote the YAML so it can be embedded safely into a JS string literal
-				specLiteral := strconv.Quote(string(openapiYAML))
+		// quote the YAML so it can be embedded safely into a JS string literal
+		specLiteral := strconv.Quote(string(openapiYAML))
 
-				html := `<!doctype html>
+		html := `<!doctype html>
 <html>
 	<head>
 		<title>API Docs</title>
@@ -164,6 +164,6 @@ func (s *Server) routes() {
 	</body>
 </html>`
 
-				c.String(http.StatusOK, html)
+		c.String(http.StatusOK, html)
 	})
 }
