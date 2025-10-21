@@ -1,35 +1,31 @@
 package server
 
 import (
-    "net/http"
-    "net/http/httptest"
-    "testing"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
-func TestServer(t *testing.T) {
-    // Create a new server instance
-    srv := NewServer() // Assuming NewServer is a function that initializes your server
+func TestServer_Hello(t *testing.T) {
+	srv := New()
 
-    // Create a request to test the server
-    req, err := http.NewRequest("GET", "/some-endpoint", nil)
-    if err != nil {
-        t.Fatalf("could not create request: %v", err)
-    }
+	req := httptest.NewRequest(http.MethodGet, "/hello", nil)
+	rr := httptest.NewRecorder()
 
-    // Create a response recorder to capture the response
-    rr := httptest.NewRecorder()
+	srv.ServeHTTP(rr, req)
 
-    // Serve the HTTP request
-    srv.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
 
-    // Check the status code
-    if status := rr.Code; status != http.StatusOK {
-        t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
-    }
-
-    // Check the response body (if applicable)
-    expected := `{"message": "success"}`
-    if rr.Body.String() != expected {
-        t.Errorf("handler returned unexpected body: got %v want %v", rr.Body.String(), expected)
-    }
+	var got struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
+		t.Fatalf("could not decode response: %v", err)
+	}
+	if got.Message != "Hello, World!" {
+		t.Fatalf("unexpected message: %q", got.Message)
+	}
 }
