@@ -1,0 +1,20 @@
+openapi: 3.0.0
+info:
+  title: My Go Server API
+  description: This is a simple API server built with Go.
+  version: 1.0.0
+paths:
+  /hello:
+    get:
+      summary: Returns a greeting message
+      responses:
+        '200':
+          description: A greeting message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Hello, World!"
